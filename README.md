@@ -17,6 +17,8 @@ The Flutter mobile client for my personal portfolio, the individual project of P
 - **Action buttons** for View Education, Add Education and Logout. Each has its own icon and color: blue, green and red, all Material shade 800. White text on each of these colors passes the WCAG AA contrast minimum of 4.5:1, which the plain `Colors.blue`, `Colors.green` and `Colors.red` don't.
 - **Tooltips** describe each button when you hover over it, or long-press it on a phone.
 - **Snackbar feedback**: pressing a button shows "You pressed the [button name] button!" in a floating snackbar with that button's color and icon and a close button. Pressing another button replaces the message right away.
+- **Drawer navigation**: the ☰ button in the app bar opens a drawer with Home and Add Education. Choosing a page there replaces the current page (`Navigator.pushReplacement`). The Add Education button on the home page instead opens the form on top of the home page (`Navigator.push`), so Back returns to it.
+- **Add Education form** whose fields match my Django `Education` model: institution, degree, description, a start date and an optional end date, both picked from a calendar. Every field is checked: the required ones can't be left empty, institution and degree are limited to 255 characters, and the end date can't be before the start date. Errors disappear as soon as they're fixed. Save shows the entered data in a dialog, and pressing OK clears the form.
 - **Responsive layout**: on wide screens the content stays in a centered column at most 600 px wide, on short screens the page scrolls, and on narrow phones the button labels shrink instead of overflowing.
 - **Light and dark mode** follow the device's setting. The app bar takes its text color from the theme, so it stays readable in both.
 
@@ -25,15 +27,18 @@ The Flutter mobile client for my personal portfolio, the individual project of P
 | File | Contents |
 | --- | --- |
 | `lib/main.dart` | Entry point: `MyApp` builds the `MaterialApp` with the light and dark themes |
-| `lib/menu.dart` | `MyHomePage`: the info cards, the welcome text and the grid of action buttons |
-| `lib/models/item_homepage.dart` | `ItemHomepage`: the name, icon, color and tooltip of one action button |
+| `lib/screens/menu.dart` | `MyHomePage`: the info cards, the welcome text and the grid of action buttons |
+| `lib/screens/education_form.dart` | `EducationFormPage`: the Add Education form |
+| `lib/models/item_homepage.dart` | `ItemHomepage`: the name, icon, color and tooltip of one action button, plus the page it opens, if any |
 | `lib/widgets/info_card.dart` | `InfoCard`: a card with a title and its content |
-| `lib/widgets/item_card.dart` | `ItemCard`: a colored action button that shows a snackbar when pressed |
-| `test/widget_test.dart` | Widget tests for the home page |
+| `lib/widgets/item_card.dart` | `ItemCard`: a colored action button that shows a snackbar and opens its page when pressed |
+| `lib/widgets/left_drawer.dart` | `LeftDrawer`: the navigation drawer with Home and Add Education |
+| `lib/widgets/date_form_field.dart` | `DateFormField`: a form field that picks a date from a calendar |
+| `test/widget_test.dart` | Widget tests for the home page, the drawer and the form |
 
 ## Getting Started
 
-You need the Flutter SDK on the stable channel (this app was built with Flutter 3.47.9 and Dart 3.13), Git, and Google Chrome.
+You need the Flutter SDK on the stable channel (this app was built with Flutter 3.47.9 and Dart 3.13), Git, and Google Chrome. The Material widgets come from the `material_ui` package (`import 'package:material_ui/material_ui.dart';`), which replaces `package:flutter/material.dart` from Flutter 3.50 onward; `flutter pub get` installs it.
 
 1. `git clone https://github.com/REYHANCSUI25/myportofolio_mobile.git`
 2. `cd myportofolio_mobile`
@@ -48,11 +53,14 @@ Before committing, I run these three checks:
 
 ## Running the Tests
 
-`flutter test` runs 7 widget tests from `test/widget_test.dart`:
+`flutter test` runs 10 widget tests from `test/widget_test.dart`:
 
 - the info cards show my NPM, full name and class
 - each action button is drawn in its own color
 - pressing each of the three buttons shows its snackbar message (one test per button)
+- the Add Education button opens the form
+- choosing Add Education in the drawer replaces the home page with the form
+- saving an empty form shows an error for every required field
 - the page fits a 320 × 568 phone screen without overflowing
 - the app switches to its dark theme when the device is in dark mode
 
@@ -62,6 +70,7 @@ Before committing, I run these three checks:
 | --- | --- |
 | Tutorial 8 | Installed Flutter 3.47.9 and the VS Code Flutter extension, created `myportofolio_mobile`, moved the home screen into `menu.dart`, converted `MyHomePage` into a `StatelessWidget`, built `InfoCard` and `ItemCard` with a snackbar, and checked the code with `flutter analyze` |
 | Assignment 7 | My own NPM, name and class on the info cards; View Education, Add Education and Logout buttons in different colors; colored floating snackbars; tooltips; responsive layout; light and dark mode; `ItemHomepage`, `InfoCard` and `ItemCard` moved into `lib/models` and `lib/widgets`; 7 widget tests replacing the template's counter test |
+| Tutorial 9 | Switched from `package:flutter/material.dart` to the `material_ui` package; added a navigation drawer (`LeftDrawer`) with Home and Add Education; built the Add Education form (`EducationFormPage`) with validation, calendar date pickers and a dialog that shows the entered data; made the Add Education button open the form; moved the screens into `lib/screens`; 3 more widget tests |
 
 ### Assignment 7
 
