@@ -35,6 +35,13 @@ class ItemCard extends StatelessWidget {
       );
   }
 
+  void _openDestination(BuildContext context) {
+    final WidgetBuilder? destination = item.destination;
+    if (destination != null) {
+      Navigator.push(context, MaterialPageRoute(builder: destination));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Tooltip(
@@ -44,7 +51,10 @@ class ItemCard extends StatelessWidget {
         borderRadius: _borderRadius,
         child: InkWell(
           borderRadius: _borderRadius,
-          onTap: () => _showPressedMessage(context),
+          onTap: () {
+            _showPressedMessage(context);
+            _openDestination(context);
+          },
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: LayoutBuilder(
