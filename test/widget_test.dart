@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
-import 'package:myportofolio_mobile/menu.dart';
+import 'package:myportofolio_mobile/screens/education_form.dart';
+import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/widgets/item_card.dart';
 
 void main() {
@@ -36,11 +37,54 @@ void main() {
       await tester.pumpWidget(const MyApp());
 
       await tester.tap(find.text(item.name));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('You pressed the ${item.name} button!'), findsOneWidget);
     });
   }
+
+  testWidgets('Add Education opens the education form', (tester) async {
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Add Education'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EducationFormPage), findsOneWidget);
+  });
+
+  testWidgets('the drawer replaces the home page with the form', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+
+    tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(Drawer),
+        matching: find.text('Add Education'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EducationFormPage), findsOneWidget);
+    expect(find.byType(MyHomePage), findsNothing);
+  });
+
+  testWidgets('saving an empty form shows what is missing', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: EducationFormPage()));
+
+    await tester.ensureVisible(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+
+    expect(find.text('Enter the institution.'), findsOneWidget);
+    expect(find.text('Enter the degree.'), findsOneWidget);
+    expect(find.text('Enter a description.'), findsOneWidget);
+    expect(find.text('Choose a start date.'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
 
   testWidgets('fits a small phone screen without overflowing', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
