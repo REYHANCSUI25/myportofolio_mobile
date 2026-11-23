@@ -6,7 +6,7 @@ Class : PBP KI
 
 # MyPortfolio Mobile
 
-The Flutter mobile client for my personal portfolio, the individual project of Platform-Based Programming (CSGE602022), Fasilkom UI, Odd Semester 2026/2027. As on my Django website, the portfolio section is **Education**. In later tutorials this app will load its data from the site's Django REST Framework API.
+The Flutter mobile client for my personal portfolio, the individual project of Platform-Based Programming (CSGE602022), Fasilkom UI, Odd Semester 2026/2027. Its portfolio sections are **Education** and **Experience**, and their forms match the models on my Django website. In later tutorials this app will load its data from the site's Django REST Framework API.
 
 - Django website: https://muhammad-reyhan53-myportofolio.pws.cs.ui.ac.id
 - Django repository: https://github.com/REYHANCSUI25/myportofolio
@@ -14,12 +14,26 @@ The Flutter mobile client for my personal portfolio, the individual project of P
 ## Features
 
 - **Info cards** show my NPM, full name and PBP class. The three cards always share the row equally and match each other's height, even when my name wraps onto several lines.
-- **Action buttons** for View Education, Add Education and Logout. Each has its own icon and color: blue, green and red, all Material shade 800. White text on each of these colors passes the WCAG AA contrast minimum of 4.5:1, which the plain `Colors.blue`, `Colors.green` and `Colors.red` don't.
+- **Action buttons** for View Education, Add Education, Add Experience and Logout. Each has its own icon and color: blue, green, purple and red, all Material shade 800. White text on each of these colors passes the WCAG AA contrast minimum of 4.5:1, which the plain `Colors.blue`, `Colors.green` and `Colors.red` don't.
 - **Tooltips** describe each button when you hover over it, or long-press it on a phone.
 - **Snackbar feedback**: pressing a button shows "You pressed the [button name] button!" in a floating snackbar with that button's color and icon and a close button. Pressing another button replaces the message right away.
-- **Drawer navigation**: the ☰ button in the app bar opens a drawer with Home and Add Education. Choosing a page there replaces the current page (`Navigator.pushReplacement`). The Add Education button on the home page instead opens the form on top of the home page (`Navigator.push`), so Back returns to it.
-- **Add Education form** whose fields match my Django `Education` model: institution, degree, description, a start date and an optional end date, both picked from a calendar. Every field is checked: the required ones can't be left empty, institution and degree are limited to 255 characters, and the end date can't be before the start date. Errors disappear as soon as they're fixed. Save shows the entered data in a dialog, and pressing OK clears the form.
-- **Responsive layout**: on wide screens the content stays in a centered column at most 600 px wide, on short screens the page scrolls, and on narrow phones the button labels shrink instead of overflowing.
+- **Drawer navigation**: the ☰ button in the app bar opens the same drawer on every page, with Home, Add Education and Add Experience. The drawer highlights the page you're on, and choosing that page again just closes the drawer.
+  - The Add Education and Add Experience buttons on the home page open their forms on top of it with `Navigator.push`.
+  - The drawer's form options open the form on top of the home page too, and remove any other form in between (`Navigator.pushAndRemoveUntil` with `(route) => route.isFirst`).
+  - Home in the drawer clears the navigation stack (`Navigator.pushAndRemoveUntil` with `(route) => false`), so there's never a second copy of the home page underneath.
+
+  So however a form was opened, Back from it returns to the home page.
+- **Add Education form** whose fields match my Django `Education` model: institution, degree, description, a start date and an optional end date, both picked from a calendar. Every field is checked: the required ones can't be left empty, institution and degree are limited to 255 characters, and the end date can't be before the start date. Errors disappear as soon as they're fixed. Save shows the entered data in a dialog, and closing the dialog clears the form for the next entry.
+- **Add Experience form** whose fields match my Django `Experience` model:
+  - a title, required and limited to 255 characters
+  - a category picked from the model's six choices, defaulting to Full-Time
+  - a description, required
+  - an optional thumbnail link, which must start with http:// or https:// and is limited to the 200 characters of Django's `URLField`
+  - an optional end date picked from a calendar, left empty while the experience is ongoing
+
+  The model sets the start date itself when an entry is created, so the form doesn't ask for it. Save works the same way as on the Education form.
+- **Protection for unsaved input**: on both forms, going Back (including the browser's Back button) or choosing another page in the drawer after typing something asks "Discard this entry?" first, so nothing is lost by accident. While the drawer is open, Back just closes the drawer.
+- **Responsive layout**: on wide screens the content stays in a centered column at most 600 px wide, with the four action buttons in one row; on phones the buttons form a 2 × 2 grid. Short screens scroll, and button labels shrink instead of overflowing.
 - **Light and dark mode** follow the device's setting. The app bar takes its text color from the theme, so it stays readable in both.
 
 ## Project Structure
@@ -29,12 +43,18 @@ The Flutter mobile client for my personal portfolio, the individual project of P
 | `lib/main.dart` | Entry point: `MyApp` builds the `MaterialApp` with the light and dark themes |
 | `lib/screens/menu.dart` | `MyHomePage`: the info cards, the welcome text and the grid of action buttons |
 | `lib/screens/education_form.dart` | `EducationFormPage`: the Add Education form |
+| `lib/screens/experience_form.dart` | `ExperienceFormPage`: the Add Experience form |
 | `lib/models/item_homepage.dart` | `ItemHomepage`: the name, icon, color and tooltip of one action button, plus the page it opens, if any |
+| `lib/models/experience_category.dart` | `ExperienceCategory`: the six experience categories, with the same values and labels as the Django model |
+| `lib/utils/validators.dart` | The validation rules both forms share: required text, optional web links, and the order of two dates |
+| `lib/utils/unsaved_changes_guard.dart` | `UnsavedChangesGuard`: a mixin that makes a form ask before its unsaved input is discarded |
 | `lib/widgets/info_card.dart` | `InfoCard`: a card with a title and its content |
 | `lib/widgets/item_card.dart` | `ItemCard`: a colored action button that shows a snackbar and opens its page when pressed |
-| `lib/widgets/left_drawer.dart` | `LeftDrawer`: the navigation drawer with Home and Add Education |
+| `lib/widgets/left_drawer.dart` | `LeftDrawer`: the navigation drawer with Home, Add Education and Add Experience |
 | `lib/widgets/date_form_field.dart` | `DateFormField`: a form field that picks a date from a calendar |
-| `test/widget_test.dart` | Widget tests for the home page, the drawer and the form |
+| `lib/widgets/form_decoration.dart` | The outlined input style both forms share |
+| `test/widget_test.dart` | Widget tests for the home page, the drawer and both forms |
+| `test/validators_test.dart` | Unit tests for the validation rules |
 
 ## Getting Started
 
@@ -53,16 +73,25 @@ Before committing, I run these three checks:
 
 ## Running the Tests
 
-`flutter test` runs 10 widget tests from `test/widget_test.dart`:
+`flutter test` runs 26 tests. The 20 widget tests in `test/widget_test.dart` check that:
 
 - the info cards show my NPM, full name and class
 - each action button is drawn in its own color
-- pressing each of the three buttons shows its snackbar message (one test per button)
-- the Add Education button opens the form
-- choosing Add Education in the drawer replaces the home page with the form
-- saving an empty form shows an error for every required field
-- the page fits a 320 × 568 phone screen without overflowing
+- pressing each of the four buttons shows its snackbar message (one test per button)
+- the Add Education and Add Experience buttons open their forms
+- the drawer opens each form, and Back from a form opened in the drawer returns to the home screen
+- Home in the drawer takes a form back to the home screen, with nothing left underneath
+- the drawer highlights the page you're on
+- saving an empty Education form shows an error for every required field
+- saving an invalid Experience entry (a title of only spaces, no description, a broken link) shows an error next to each of those fields
+- a valid Experience entry is summarized in a dialog, and OK closes it and clears the form
+- going Back with unsaved input asks before discarding it, and Discard returns to the home screen
+- choosing another page in the drawer with unsaved input asks first, and Keep editing keeps the input
+- the home page fits a 320 × 568 phone screen without overflowing
+- on that phone size, with the on-screen keyboard open, the Experience form's Save button can still be reached and pressed
 - the app switches to its dark theme when the device is in dark mode
+
+The 6 unit tests in `test/validators_test.dart` check the shared validation rules on their own: blank text, web links, and the order of a start and end date.
 
 ## Weekly Progress
 
@@ -71,6 +100,7 @@ Before committing, I run these three checks:
 | Tutorial 8 | Installed Flutter 3.47.9 and the VS Code Flutter extension, created `myportofolio_mobile`, moved the home screen into `menu.dart`, converted `MyHomePage` into a `StatelessWidget`, built `InfoCard` and `ItemCard` with a snackbar, and checked the code with `flutter analyze` |
 | Assignment 7 | My own NPM, name and class on the info cards; View Education, Add Education and Logout buttons in different colors; colored floating snackbars; tooltips; responsive layout; light and dark mode; `ItemHomepage`, `InfoCard` and `ItemCard` moved into `lib/models` and `lib/widgets`; 7 widget tests replacing the template's counter test |
 | Tutorial 9 | Switched from `package:flutter/material.dart` to the `material_ui` package; added a navigation drawer (`LeftDrawer`) with Home and Add Education; built the Add Education form (`EducationFormPage`) with validation, calendar date pickers and a dialog that shows the entered data; made the Add Education button open the form; moved the screens into `lib/screens`; 3 more widget tests |
+| Assignment 8 | Add Experience form matching my Django `Experience` model (title, category, description, thumbnail link, end date) with validation and a summary dialog; Add Experience action button and drawer option; forms always open above the home page, so Back returns to it, and Home in the drawer clears the navigation stack; the drawer highlights the current page; a "Discard this entry?" check before unsaved input is lost, on both forms; a responsive action grid; validators, input style and the unsaved-input check shared between the forms; 26 tests in all |
 
 ### Assignment 7
 
@@ -168,3 +198,68 @@ Claude was used for me to learn or discover the following:
 5. Checking color contrast against WCAG AA (4.5:1 for normal text), which ruled out the plain `Colors.blue`, `Colors.green` and `Colors.red`.
 6. Writing widget tests with `flutter_test`: finders like `find.widgetWithText` and `find.descendant`, simulating a small phone with `tester.view`, and simulating dark mode with `platformBrightnessTestValue`.
 7. That hot reload doesn't re-run static initializers, but does pick up changes to `const` values.
+
+### Assignment 8
+
+1. `Navigator` keeps the app's pages (routes) in a stack, and the route on top is the one on screen.
+   - **`Navigator.push()`** puts a new route on top of the current one. The page you came from stays underneath, so Back returns to it.
+   - **`Navigator.pushReplacement()`** puts a new route on top and removes the current one. The routes further down stay, but the page you came from is gone, so Back skips it, and if nothing is left underneath, Back leaves the app.
+   - **`Navigator.pop()`** removes the top route and shows the one underneath. The system Back button and the browser's Back button do this, and my code also calls it to close the drawer and the dialogs.
+
+   The action card opens the form with `Navigator.push()`: `ItemCard._openDestination` calls `Navigator.push(context, MaterialPageRoute(builder: destination))` with the page stored in the button's `ItemHomepage`. The home page stays under the form, so Back returns to it.
+
+   The drawer's Home option calls `Navigator.pushAndRemoveUntil()` with the predicate `(route) => false`. It pushes a new `MyHomePage` and removes every route below it, so the stack holds only the home page again. Tutorial 9 used `pushReplacement()` here, but when a form has been opened from the action card, the stack is home → form, and replacing the form with a new home page leaves home → home, so Back on the home page would show a second copy of it.
+
+   The drawer's two form options also use `pushAndRemoveUntil()`, with `(route) => route.isFirst`: they open the form on top of the home page and remove any other form in between. With `pushReplacement()`, choosing a form from the home page's drawer would replace the home page, leaving the form alone on the stack, so Back would leave the app. Because the home page always stays at the bottom, Back from any form returns home. Before leaving a form with unsaved input, both Back and the drawer ask "Discard this entry?", and choosing the page you're already on only closes the drawer.
+2. Every page is built from the same three parts: a `Scaffold` as the page frame, an `AppBar` in its `appBar` slot and my `LeftDrawer` in its `drawer` slot. The `Scaffold` positions them the same way on every page: the title bar at the top, the ☰ button that the `AppBar` adds for the drawer in its corner, and the drawer sliding in from the left. All three pages use the same `LeftDrawer` class, so its header and options never change; each page only tells it which page is current (`currentPage`), so it can highlight that option, and the forms also give it `confirmLeave`, so it can ask before discarding input. Only the body is different on each page.
+
+   The colors come from one theme. `MyApp` in `main.dart` builds the light and dark themes from `ColorScheme.fromSeed(seedColor: Colors.indigo)`, and every page reads them with `Theme.of(context).colorScheme` instead of hardcoding them. For example, `colorScheme.primary` is the background of the app bar on the home page, the Add Education form and the Add Experience form, as well as the drawer header, and the text on all of them uses `colorScheme.onPrimary`. Because of this, all the pages switch between light and dark mode together.
+3. A form is read from top to bottom, so both form pages use a single `Column` with one field per row and the Save button at the end, where you finish. The other widgets handle the cases where space runs out:
+   - **`SingleChildScrollView`** makes the form scroll when it's taller than the screen. On a short phone, or when the on-screen keyboard covers the bottom of the screen, every field and the Save button can still be scrolled into view instead of overflowing. The `Scaffold` shrinks the body to the space above the keyboard (`resizeToAvoidBottomInset` is on by default), and a text field that gets focus is scrolled into view automatically.
+   - **`Center` and `ConstrainedBox(maxWidth: 600)`** stop the fields from stretching across a wide browser window. On a phone, the column simply takes the full width.
+   - **`Padding`** puts 8 px around the scroll area and around each field, so the fields don't touch each other or the edge of the screen, and the helper and error texts under each field have room.
+   - **`Align`** keeps the Save button centered under the fields.
+
+   The single-line text fields also use `textInputAction: TextInputAction.next`, so the keyboard's action button moves on to the next field. A widget test checks that the Save button can still be reached and pressed on a 320 × 568 phone with the keyboard taking up 260 px of it.
+4. When I press Save, `_save()` runs:
+   - **`GlobalKey<FormState>`**: `_formKey` is attached to the `Form`, which lets `_save()` reach the form's state through `_formKey.currentState`. `_save()` runs in the page's `State`, whose `context` sits above the `Form`, so `Form.of(context)` couldn't find it there. The form's state keeps track of every field inside the form.
+   - **`validator`**: each field has one. It receives the field's current value and returns an error message, or `null` if the value is fine. The rules follow my Django model, and the ones both forms use live in `lib/utils/validators.dart`, which has its own unit tests.
+   - **`validate()`**: calling it on the form state runs every field's `validator`, shows each returned message under its field, and returns `true` only if all of them returned `null`. If it returns `false`, `_save()` stops there, so the dialog never shows invalid data. After a failed Save, `AutovalidateMode.onUserInteractionIfError` makes the form check its fields again every time one of them is edited, so each error disappears as soon as its value is fixed.
+
+   Only when `validate()` returns `true` does `_save()` call `save()`, which runs each field's `onSaved` to copy its value into the page's state, and then `showDialog()` shows the summary.
+
+   For example, the Thumbnail URL field rejects `example.com` with "Enter a valid link that starts with http:// or https://.". That field uses `keyboardType: TextInputType.url`, but a keyboard type only decides which on-screen keyboard appears, one laid out for typing web addresses. Nothing stops anyone from typing or pasting any text, and on a computer's keyboard it has no effect at all. The input widget doesn't check values either: a `TextFormField` accepts any text, so a title made only of spaces looks filled in, and only `validateRequired`, which trims the value first, rejects it. Some widgets do rule out bad values: `maxLength: 255` stops typing at the limit, and the category dropdown only offers the six choices from the model. But a rule like "a link that starts with http:// or https://" can only be checked by a validator.
+
+**What was implemented**
+
+1. New form page: `ExperienceFormPage` in `lib/screens/experience_form.dart` is a `StatefulWidget` with a `Form` and a `GlobalKey<FormState>`. The title is "Add Experience Form", and the five inputs match my Django `Experience` model:
+   - Title: a `TextFormField`, required and limited to 255 characters (`max_length=255`).
+   - Category: a `DropdownButtonFormField` with the model's six choices, defaulting to Full-Time. The choices are the `ExperienceCategory` enum in `lib/models/experience_category.dart`, which stores the same values Django stores (such as `part-time`) together with their labels.
+   - Description: a multi-line `TextFormField`, required.
+   - Thumbnail URL: a `TextFormField` with the URL keyboard. It's optional (`blank=True`), limited to 200 characters (Django's default `max_length` for a `URLField`), and must be an http:// or https:// link with a domain.
+   - End date: a calendar picker (`showDatePicker()`, wrapped in my `DateFormField`), optional and clearable, since `ended_at` can be empty while an experience is ongoing.
+
+   The model fills in `started_at` itself (`auto_now_add=True`), so the form doesn't ask for it.
+2. Validation and summary: Save calls `validate()`, and each invalid input shows its error under the field. Values made only of spaces are rejected. When everything is valid, an `AlertDialog` opened with `showDialog()` lists all five values, and OK closes it and returns to the form, which is then cleared.
+3. Navigation: the new Add Experience action card opens the form with `Navigator.push()`, and the system or browser Back button returns to the home page. The same `LeftDrawer` is used on the home page and both forms, with the Home and Add Education options kept and Add Experience added. Home in the drawer returns to the home screen from either form.
+4. Layout: the form uses a `Scaffold` and an `AppBar` with the same theme colors as the home page, and the `SingleChildScrollView`, `Center`, `ConstrainedBox` and `Padding` layout described in answer 3.
+5. Extras beyond the checklist:
+   - the "Discard this entry?" check before unsaved input is lost, on both forms, for Back, the browser's Back button and the drawer
+   - forms always open above the home page, so Back from any form returns home, and Home in the drawer leaves no extra copies of the home page
+   - the drawer highlights the current page, and choosing it again just closes the drawer
+   - a responsive action grid: four buttons in a row on wide screens and a 2 × 2 grid on phones, with the new button in purple (`Colors.purple.shade800`), which also passes the WCAG AA contrast minimum with white text
+   - code shared by both forms: the validators, the outlined input style (`lib/widgets/form_decoration.dart`) and the unsaved-input check (the `UnsavedChangesGuard` mixin in `lib/utils/unsaved_changes_guard.dart`)
+   - 26 tests: 20 widget tests (10 more than in Tutorial 9, and some updated) and 6 unit tests for the validators
+6. Code quality: the screens are in `lib/screens/`, the drawer, action card and form widgets in `lib/widgets/`, the data classes in `lib/models/`, and the validators and the unsaved-input mixin in `lib/utils/`. `flutter analyze` reports no issues, and `dart format` keeps the formatting standard.
+7. Git: the work was done on the `feature/experience-form` branch with conventional commits, pushed after every commit, and merged into `main` with a merge commit.
+
+Claude was used for me to learn or discover the following:
+1. How `push`, `pushReplacement` and `pushAndRemoveUntil` change the navigation stack, and why using `pushReplacement` for Home leaves two home pages when the form was opened with `push`.
+2. That popping the last route leaves the `Navigator` empty, which shows a blank screen (or an error while debugging). That's why the drawer opens forms above the home page instead of replacing it.
+3. Asking before unsaved input is lost with `Form`'s `canPop` and `onPopInvokedWithResult`, which replaced its deprecated `onWillPop`, and that while the drawer is open, Back should close the drawer instead of asking.
+4. Sharing that behavior between the two forms' `State` classes with a mixin (`mixin UnsavedChangesGuard<T extends StatefulWidget> on State<T>`).
+5. Keeping a `NavigatorState` from before an `await`, because the drawer's own `BuildContext` stops being valid once the drawer has closed.
+6. That a `DropdownButtonFormField` without `onChanged` is disabled unless it gets `enabled: true`, and that `initialValue` replaces its deprecated `value`.
+7. That a keyboard type such as `TextInputType.url` only changes the on-screen keyboard, so links still need a validator (`Uri.tryParse` plus checks on the scheme and the host).
+8. Carrying the Django model's rules over to Flutter: `max_length` as `maxLength`, the 200-character default of `URLField`, and the `choices` list as an enhanced enum that keeps both the stored value and the label.
+9. Testing forms: unit tests for plain functions with `test()` and `group()`, filling in fields with `tester.enterText` and `find.widgetWithText(TextFormField, ...)`, and imitating an open keyboard with `tester.view.viewInsets`.
