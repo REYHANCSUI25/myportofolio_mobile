@@ -1,5 +1,8 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/utils/unsaved_changes_guard.dart';
+import 'package:myportofolio_mobile/utils/validators.dart';
 import 'package:myportofolio_mobile/widgets/date_form_field.dart';
+import 'package:myportofolio_mobile/widgets/form_decoration.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 
 class EducationFormPage extends StatefulWidget {
@@ -9,7 +12,8 @@ class EducationFormPage extends StatefulWidget {
   State<EducationFormPage> createState() => _EducationFormPageState();
 }
 
-class _EducationFormPageState extends State<EducationFormPage> {
+class _EducationFormPageState extends State<EducationFormPage>
+    with UnsavedChangesGuard<EducationFormPage> {
   static const double _maxFormWidth = 600;
 
   final _formKey = GlobalKey<FormState>();
@@ -21,27 +25,11 @@ class _EducationFormPageState extends State<EducationFormPage> {
   DateTime? _startedAt;
   DateTime? _endedAt;
 
-  InputDecoration _decoration(String labelText, String hintText) {
-    return InputDecoration(
-      labelText: labelText,
-      hintText: hintText,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(5.0)),
-    );
-  }
-
-  String? _required(String? value, String message) {
-    return value == null || value.trim().isEmpty ? message : null;
-  }
-
   String? _validateEndDate(DateTime? endedAt) {
-    final DateTime? startedAt = _startDateKey.currentState?.value;
-    if (endedAt != null && startedAt != null && endedAt.isBefore(startedAt)) {
-      return "The end date can't be before the start date.";
-    }
-    return null;
+    return validateDateOrder(_startDateKey.currentState?.value, endedAt);
   }
 
-  void _save() {
+  Future<void> _save() async {
     final FormState form = _formKey.currentState!;
     if (!form.validate()) {
       return;
@@ -63,7 +51,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
       'End date: $endDate',
     ];
 
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -76,16 +64,18 @@ class _EducationFormPageState extends State<EducationFormPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                _formKey.currentState!.reset();
-              },
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('OK'),
             ),
           ],
         );
       },
     );
+    if (!mounted) {
+      return;
+    }
+    form.reset();
+    markSaved();
   }
 
   @override
@@ -99,9 +89,15 @@ class _EducationFormPageState extends State<EducationFormPage> {
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
       ),
-      drawer: const LeftDrawer(),
+      drawer: LeftDrawer(
+        currentPage: DrawerPage.addEducation,
+        confirmLeave: confirmLeave,
+      ),
       body: Form(
         key: _formKey,
+        canPop: !hasUnsavedInput,
+        onPopInvokedWithResult: handlePop,
+        onChanged: markUnsaved,
         autovalidateMode: AutovalidateMode.onUserInteractionIfError,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(8.0),
@@ -115,12 +111,13 @@ class _EducationFormPageState extends State<EducationFormPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: TextFormField(
                       maxLength: 255,
-                      decoration: _decoration(
+                      textInputAction: TextInputAction.next,
+                      decoration: formFieldDecoration(
                         'Institution',
-                        'Example: Universitas Indonesia',
+                        hintText: 'Example: Universitas Indonesia',
                       ),
                       validator: (value) =>
-                          _required(value, 'Enter the institution.'),
+                          validateRequired(value, 'Enter the institution.'),
                       onSaved: (value) => _institution = value!.trim(),
                     ),
                   ),
@@ -128,12 +125,13 @@ class _EducationFormPageState extends State<EducationFormPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: TextFormField(
                       maxLength: 255,
-                      decoration: _decoration(
+                      textInputAction: TextInputAction.next,
+                      decoration: formFieldDecoration(
                         'Degree',
-                        'Example: Bachelor of Computer Science',
+                        hintText: 'Example: Bachelor of Computer Science',
                       ),
                       validator: (value) =>
-                          _required(value, 'Enter the degree.'),
+                          validateRequired(value, 'Enter the degree.'),
                       onSaved: (value) => _degree = value!.trim(),
                     ),
                   ),
@@ -141,12 +139,12 @@ class _EducationFormPageState extends State<EducationFormPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: TextFormField(
                       maxLines: 5,
-                      decoration: _decoration(
+                      decoration: formFieldDecoration(
                         'Description',
-                        'What you studied or achieved there',
+                        hintText: 'What you studied or achieved there',
                       ),
                       validator: (value) =>
-                          _required(value, 'Enter a description.'),
+                          validateRequired(value, 'Enter a description.'),
                       onSaved: (value) => _description = value!.trim(),
                     ),
                   ),

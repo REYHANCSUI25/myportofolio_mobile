@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/widgets/form_decoration.dart';
 
 class DateFormField extends FormField<DateTime> {
   DateFormField({
@@ -11,10 +12,9 @@ class DateFormField extends FormField<DateTime> {
   }) : super(
          builder: (field) {
            final DateTime? date = field.value;
-           final BorderRadius borderRadius = BorderRadius.circular(5.0);
 
            return InkWell(
-             borderRadius: borderRadius,
+             borderRadius: formFieldRadius,
              onTap: () async {
                final DateTime? picked = await showDatePicker(
                  context: field.context,
@@ -28,11 +28,10 @@ class DateFormField extends FormField<DateTime> {
              },
              child: InputDecorator(
                isEmpty: date == null,
-               decoration: InputDecoration(
-                 labelText: labelText,
+               decoration: formFieldDecoration(
+                 labelText,
                  helperText: helperText,
                  errorText: field.errorText,
-                 border: OutlineInputBorder(borderRadius: borderRadius),
                  suffixIcon: clearable && date != null
                      ? IconButton(
                          icon: const Icon(Icons.clear),
