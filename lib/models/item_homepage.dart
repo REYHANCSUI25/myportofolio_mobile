@@ -6,6 +6,8 @@ class ItemHomepage {
   final Color color;
   final String tooltip;
   final WidgetBuilder? destination;
+  final bool requiresLogin;
+  final bool logsOut;
 
   const ItemHomepage({
     required this.name,
@@ -13,5 +15,7 @@ class ItemHomepage {
     required this.color,
     required this.tooltip,
     this.destination,
+    this.requiresLogin = false,
+    this.logsOut = false,
   });
 }
