@@ -6,7 +6,9 @@ Class : PBP KI
 
 # MyPortfolio Mobile
 
-The Flutter mobile client for my personal portfolio, the individual project of Platform-Based Programming (CSGE602022), Fasilkom UI, Odd Semester 2026/2027. Its portfolio sections are **Education** and **Experience**, and their forms match the models on my Django website. In later tutorials this app will load its data from the site's Django REST Framework API.
+[![CI](https://github.com/REYHANCSUI25/myportofolio_mobile/actions/workflows/main.yaml/badge.svg)](https://github.com/REYHANCSUI25/myportofolio_mobile/actions/workflows/main.yaml)
+
+The Flutter mobile client for my personal portfolio, the individual project of Platform-Based Programming (CSGE602022), Fasilkom UI, Odd Semester 2026/2027. Its portfolio sections are **Education** and **Experience**, and their forms match the models on my Django website. The Education pages read and save their data through the site's Django REST Framework API, logging in with a token.
 
 - Django website: https://muhammad-reyhan53-myportofolio.pws.cs.ui.ac.id
 - Django repository: https://github.com/REYHANCSUI25/myportofolio
@@ -14,16 +16,19 @@ The Flutter mobile client for my personal portfolio, the individual project of P
 ## Features
 
 - **Info cards** show my NPM, full name and PBP class. The three cards always share the row equally and match each other's height, even when my name wraps onto several lines.
-- **Action buttons** for View Education, Add Education, Add Experience and Logout. Each has its own icon and color: blue, green, purple and red, all Material shade 800. White text on each of these colors passes the WCAG AA contrast minimum of 4.5:1, which the plain `Colors.blue`, `Colors.green` and `Colors.red` don't.
+- **Action buttons** for View Education, Add Education, Add Experience and Logout. Each has its own icon and color: blue, green, purple and red, all Material shade 800. White text on each of these colors passes the WCAG AA contrast minimum of 4.5:1, which the plain `Colors.blue`, `Colors.green` and `Colors.red` don't. Add Education asks you to log in first, and Logout logs you out.
 - **Tooltips** describe each button when you hover over it, or long-press it on a phone.
-- **Snackbar feedback**: pressing a button shows "You pressed the [button name] button!" in a floating snackbar with that button's color and icon and a close button. Pressing another button replaces the message right away.
-- **Drawer navigation**: the ☰ button in the app bar opens the same drawer on every page, with Home, Add Education and Add Experience. The drawer highlights the page you're on, and choosing that page again just closes the drawer.
-  - The Add Education and Add Experience buttons on the home page open their forms on top of it with `Navigator.push`.
-  - The drawer's form options open the form on top of the home page too, and remove any other form in between (`Navigator.pushAndRemoveUntil` with `(route) => route.isFirst`).
+- **Snackbar feedback**: pressing View Education, Add Education or Add Experience shows "You pressed the [button name] button!" in a floating snackbar with that button's color and icon and a close button. Logout's snackbar says "You've been logged out.", or "You aren't logged in." when nobody is. Pressing another button replaces the message right away.
+- **Drawer navigation**: the ☰ button in the app bar opens the same drawer on the home page, the education list and both forms, with Home, View Education, Add Education and Add Experience, and below them Login or Logout. The drawer highlights the page you're on, and choosing that page again just closes the drawer.
+  - The View Education, Add Education and Add Experience buttons on the home page open their pages on top of it with `Navigator.push`.
+  - The drawer's page options open their page on top of the home page too, and remove any other page in between (`Navigator.pushAndRemoveUntil` with `(route) => route.isFirst`).
   - Home in the drawer clears the navigation stack (`Navigator.pushAndRemoveUntil` with `(route) => false`), so there's never a second copy of the home page underneath.
 
-  So however a form was opened, Back from it returns to the home page.
-- **Add Education form** whose fields match my Django `Education` model: institution, degree, description, a start date and an optional end date, both picked from a calendar. Every field is checked: the required ones can't be left empty, institution and degree are limited to 255 characters, and the end date can't be before the start date. Errors disappear as soon as they're fixed. Save shows the entered data in a dialog, and closing the dialog clears the form for the next entry.
+  So however a page was opened, Back from it returns to the home page.
+- **Education list from the API**: View Education loads the entries from `GET /api/v1/education/` with a `FutureBuilder`, without logging in. It shows a spinner while loading, an error message with a Retry button when the request fails (including "Couldn't reach the server. Check that Django is running." when the server is off), and "No education entries yet." when there are none. Pulling the list down loads it again. Each card shows the degree, institution, period (such as "August 2025 – Present") and the start of the description.
+- **Education details**: tapping an entry opens its degree, institution, start date, star count and full description, plus the end date if there is one, or an "Ongoing" chip if there isn't.
+- **Token login**: Add Education, on the home page and in the drawer, opens a login page first when nobody is logged in, and then the form. The app exchanges the username and password for a token at `POST /api/v1/auth/token/`, keeps it in memory in `AuthState` (a `ChangeNotifier` shared with `provider`), and sends it as `Authorization: Token <token>`. A wrong password shows the server's reason, "Login failed (400): Unable to log in with provided credentials.". The drawer shows Login while you're logged out and Logout, with your username, while you're logged in. Logout in the drawer or on the home page revokes the token with `POST /api/v1/auth/logout/`, and forgets it even if the server can't be reached. The token is never written to the device, so closing the app logs you out.
+- **Add Education form** whose fields match my Django `Education` model: institution, degree, description, a start date and an optional end date, both picked from a calendar. Every field is checked: the required ones can't be left empty, institution and degree are limited to 255 characters, and the end date can't be before the start date. Errors disappear as soon as they're fixed. Save sends the entry to `POST /api/v1/education/` with the token. While it's sending, the button shows a spinner and can't be pressed again. When the server has saved the entry, a dialog shows the values it saved, and closing the dialog clears the form for the next entry. If the token has expired or been revoked (401), the app logs out, asks you to log in again and then sends the entry again. Any other error keeps your input and shows the server's message, such as "Couldn't save (400): Started at: ...".
 - **Add Experience form** whose fields match my Django `Experience` model:
   - a title, required and limited to 255 characters
   - a category picked from the model's six choices, defaulting to Full-Time
@@ -31,39 +36,58 @@ The Flutter mobile client for my personal portfolio, the individual project of P
   - an optional thumbnail link, which must start with http:// or https:// and is limited to the 200 characters of Django's `URLField`
   - an optional end date picked from a calendar, left empty while the experience is ongoing
 
-  The model sets the start date itself when an entry is created, so the form doesn't ask for it. Save works the same way as on the Education form.
+  The model sets the start date itself when an entry is created, so the form doesn't ask for it. Save checks every field and shows the entered data in a dialog, and closing the dialog clears the form. This form isn't connected to the API.
 - **Protection for unsaved input**: on both forms, going Back (including the browser's Back button) or choosing another page in the drawer after typing something asks "Discard this entry?" first, so nothing is lost by accident. While the drawer is open, Back just closes the drawer.
 - **Responsive layout**: on wide screens the content stays in a centered column at most 600 px wide, with the four action buttons in one row; on phones the buttons form a 2 × 2 grid. Short screens scroll, and button labels shrink instead of overflowing.
 - **Light and dark mode** follow the device's setting. The app bar takes its text color from the theme, so it stays readable in both.
+- **CI/CD with GitHub Actions**: every push to `main` and every pull request runs [very_good_workflows](https://github.com/VeryGoodOpenSource/very_good_workflows): it generates the `json_serializable` code with `build_runner`, checks the formatting with `dart format`, runs `flutter analyze` and runs the tests with coverage. When that passes, a second job builds a release APK and uploads it as the `app-release-apk` artifact of the run. Both jobs use Flutter 3.47.9, the version I build with.
 
 ## Project Structure
 
 | File | Contents |
 | --- | --- |
-| `lib/main.dart` | Entry point: `MyApp` builds the `MaterialApp` with the light and dark themes |
+| `lib/main.dart` | Entry point: `MyApp` shares one `ApiClient` and one `AuthState` with the whole app through `MultiProvider`, and builds the `MaterialApp` with the light and dark themes |
+| `lib/config.dart` | `apiBaseUrl`, the address of the Django API: `http://10.0.2.2:8000` by default, which is the computer running the Android emulator, and changed with `--dart-define=API_BASE_URL=...` |
 | `lib/screens/menu.dart` | `MyHomePage`: the info cards, the welcome text and the grid of action buttons |
-| `lib/screens/education_form.dart` | `EducationFormPage`: the Add Education form |
+| `lib/screens/education_list.dart` | `EducationListPage`: the education entries loaded from the API |
+| `lib/screens/education_detail.dart` | `EducationDetailPage`: the details of one entry |
+| `lib/screens/education_form.dart` | `EducationFormPage`: the Add Education form, which saves through the API |
 | `lib/screens/experience_form.dart` | `ExperienceFormPage`: the Add Experience form |
-| `lib/models/item_homepage.dart` | `ItemHomepage`: the name, icon, color and tooltip of one action button, plus the page it opens, if any |
+| `lib/screens/login.dart` | `LoginPage`: the username and password form |
+| `lib/models/education.dart` | `Education`: one education entry, converted from and to the API's JSON by `json_serializable`; `formatApiDate` writes dates as `YYYY-MM-DD`, the format Django's `DateField` accepts |
+| `lib/models/education.g.dart` | Generated by `build_runner` from `education.dart`, and not committed (see below) |
+| `lib/models/item_homepage.dart` | `ItemHomepage`: the name, icon, color and tooltip of one action button, the page it opens, if any, and whether it needs a login or logs out |
 | `lib/models/experience_category.dart` | `ExperienceCategory`: the six experience categories, with the same values and labels as the Django model |
+| `lib/services/api_client.dart` | `ApiClient`: the requests to the API (the education list, adding an entry, token login and logout), `ApiException` for failed requests, and `describeError`, which turns a failure into a readable message |
+| `lib/services/auth_state.dart` | `AuthState`: the token and username of whoever is logged in, which notifies the widgets that watch it when either changes |
+| `lib/utils/auth_guard.dart` | `ensureLoggedIn` and `loginIfNeeded`: open the login page first when nobody is logged in, and report whether the login succeeded |
 | `lib/utils/validators.dart` | The validation rules both forms share: required text, optional web links, and the order of two dates |
 | `lib/utils/unsaved_changes_guard.dart` | `UnsavedChangesGuard`: a mixin that makes a form ask before its unsaved input is discarded |
 | `lib/widgets/info_card.dart` | `InfoCard`: a card with a title and its content |
-| `lib/widgets/item_card.dart` | `ItemCard`: a colored action button that shows a snackbar and opens its page when pressed |
-| `lib/widgets/left_drawer.dart` | `LeftDrawer`: the navigation drawer with Home, Add Education and Add Experience |
+| `lib/widgets/item_card.dart` | `ItemCard`: a colored action button that shows a snackbar and opens its page when pressed, after a login if the page needs one; the Logout button logs out instead |
+| `lib/widgets/left_drawer.dart` | `LeftDrawer`: the navigation drawer with Home, View Education, Add Education, Add Experience, and Login or Logout |
 | `lib/widgets/date_form_field.dart` | `DateFormField`: a form field that picks a date from a calendar |
-| `lib/widgets/form_decoration.dart` | The outlined input style both forms share |
-| `test/widget_test.dart` | Widget tests for the home page, the drawer and both forms |
+| `lib/widgets/form_decoration.dart` | The outlined input style the forms share |
+| `.github/workflows/main.yaml` | The GitHub Actions pipeline: checks and tests, then the release APK |
+| `test/widget_test.dart` | Widget tests for the home page, the drawer, login, the education list and details, and both forms |
+| `test/api_client_test.dart` | Unit tests for the requests `ApiClient` sends and the error messages it produces |
+| `test/auth_state_test.dart` | Unit tests for logging in and out with `AuthState` |
+| `test/education_test.dart` | Unit tests for the `Education` JSON conversion |
 | `test/validators_test.dart` | Unit tests for the validation rules |
+| `test/fake_backend.dart` | A fake Django API for the tests, built on `MockClient` from `package:http/testing.dart`, so no test needs a real server |
 
 ## Getting Started
 
-You need the Flutter SDK on the stable channel (this app was built with Flutter 3.47.9 and Dart 3.13), Git, and Google Chrome. The Material widgets come from the `material_ui` package (`import 'package:material_ui/material_ui.dart';`), which replaces `package:flutter/material.dart` from Flutter 3.50 onward; `flutter pub get` installs it.
+You need the Flutter SDK on the stable channel (this app was built with Flutter 3.47.9 and Dart 3.13), Git, and Google Chrome. The Material widgets come from the `material_ui` package (`import 'package:material_ui/material_ui.dart';`), which replaces `package:flutter/material.dart` from Flutter 3.50 onward; `flutter pub get` installs it. The app's data comes from my Django project, so that has to be running too.
 
 1. `git clone https://github.com/REYHANCSUI25/myportofolio_mobile.git`
 2. `cd myportofolio_mobile`
 3. `flutter pub get`
-4. `flutter run -d chrome`. While it runs, press `r` in the terminal to hot reload, `R` to hot restart and `q` to quit.
+4. `dart run build_runner build --delete-conflicting-outputs` generates `lib/models/education.g.dart`, the JSON code for the `Education` model. Generated files are listed in `.gitignore`, so this step is needed after every fresh clone, and again after any change to `education.dart`.
+5. Start the Django project with `python manage.py runserver` in its own folder (see the [Django repository](https://github.com/REYHANCSUI25/myportofolio)), so the API is at `http://localhost:8000`.
+6. `flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000`. While it runs, press `r` in the terminal to hot reload, `R` to hot restart and `q` to quit. On an Android emulator, `flutter run` is enough: the default address, `http://10.0.2.2:8000`, is how the emulator reaches the computer's `localhost`, and my Django settings accept that address outside production.
+
+Chrome only lets the app call the API because the Django project allows cross-origin requests (CORS) when it isn't running in production. The Android app sends plain `http://` requests to the local server, which `android:usesCleartextTraffic="true"` in `AndroidManifest.xml` allows, next to the `INTERNET` permission. That setting is only meant for local development: a build that talks to a deployed `https://` server should turn it off.
 
 Before committing, I run these three checks:
 
@@ -71,15 +95,30 @@ Before committing, I run these three checks:
 - `flutter analyze` should print `No issues found!`.
 - `flutter test` should end with `All tests passed!`.
 
+CI runs the same checks on every push to `main` and every pull request.
+
 ## Running the Tests
 
-`flutter test` runs 26 tests. The 20 widget tests in `test/widget_test.dart` check that:
+`flutter test` runs 60 tests, and none of them needs Django: they all talk to the fake API in `test/fake_backend.dart`. The 33 widget tests in `test/widget_test.dart` check that:
 
 - the info cards show my NPM, full name and class
 - each action button is drawn in its own color
-- pressing each of the four buttons shows its snackbar message (one test per button)
-- the Add Education and Add Experience buttons open their forms
-- the drawer opens each form, and Back from a form opened in the drawer returns to the home screen
+- pressing View Education, Add Education or Add Experience shows its snackbar message (one test per button)
+- Add Education opens the login page first; a wrong password shows the server's reason, and the right one opens the form
+- the login page asks for both fields before sending anything
+- the drawer's Add Education also asks for a login first, and once you're logged in, Add Education opens the form straight away
+- the drawer shows Login while you're logged out and Logout with your username while you're logged in, and its Logout revokes the token on the server
+- the Logout button logs you out, or says you aren't logged in
+- View Education lists the entries without a login, with the degree, institution and period
+- a failed load shows the server's message, and Retry loads the list again
+- the list says when the server can't be reached
+- an empty list says there are no entries yet
+- pulling the list down loads it again
+- tapping an entry opens its details, with the "Ongoing" chip or, for a finished entry, the end date
+- saving a valid entry sends exactly the five writable fields with the token, the start date as `YYYY-MM-DD`, and the dialog shows what the server saved
+- when the token has expired, Save asks you to log in again and then saves with the new token
+- the Add Experience button opens its form
+- the drawer opens the Experience form, and Back from it returns to the home screen
 - Home in the drawer takes a form back to the home screen, with nothing left underneath
 - the drawer highlights the page you're on
 - saving an empty Education form shows an error for every required field
@@ -91,7 +130,12 @@ Before committing, I run these three checks:
 - on that phone size, with the on-screen keyboard open, the Experience form's Save button can still be reached and pressed
 - the app switches to its dark theme when the device is in dark mode
 
-The 6 unit tests in `test/validators_test.dart` check the shared validation rules on their own: blank text, web links, and the order of a start and end date.
+The 27 unit tests check the code below the screens on its own:
+
+- `test/api_client_test.dart` (9): the method, address, headers and body of every request `ApiClient` sends, and the messages it makes from the server's errors (a `detail` message, field errors, an HTML error page, a failed connection)
+- `test/auth_state_test.dart` (7): logging in keeps the token and username and notifies listeners, a rejected login leaves you logged out, and logging out revokes the token and forgets it even when the server rejects the request or can't be reached
+- `test/education_test.dart` (5): reading an entry from JSON, sending only the writable fields with dates as `YYYY-MM-DD`, and `formatApiDate`
+- `test/validators_test.dart` (6): the shared validation rules: blank text, web links, and the order of a start and end date
 
 ## Weekly Progress
 
@@ -101,6 +145,7 @@ The 6 unit tests in `test/validators_test.dart` check the shared validation rule
 | Assignment 7 | My own NPM, name and class on the info cards; View Education, Add Education and Logout buttons in different colors; colored floating snackbars; tooltips; responsive layout; light and dark mode; `ItemHomepage`, `InfoCard` and `ItemCard` moved into `lib/models` and `lib/widgets`; 7 widget tests replacing the template's counter test |
 | Tutorial 9 | Switched from `package:flutter/material.dart` to the `material_ui` package; added a navigation drawer (`LeftDrawer`) with Home and Add Education; built the Add Education form (`EducationFormPage`) with validation, calendar date pickers and a dialog that shows the entered data; made the Add Education button open the form; moved the screens into `lib/screens`; 3 more widget tests |
 | Assignment 8 | Add Experience form matching my Django `Experience` model (title, category, description, thumbnail link, end date) with validation and a summary dialog; Add Experience action button and drawer option; forms always open above the home page, so Back returns to it, and Home in the drawer clears the navigation stack; the drawer highlights the current page; a "Discard this entry?" check before unsaved input is lost, on both forms; a responsive action grid; validators, input style and the unsaved-input check shared between the forms; 26 tests in all |
+| Tutorial 10 | Connected the app to my Django REST Framework API: the `Education` model with `json_serializable` and `build_runner`; `ApiClient` on the `http` package, with readable error messages; the education list (loading, error, empty and pull-to-refresh states) and detail pages; token login with `AuthState` and `provider`; a login guard on Add Education, and Login and Logout in the drawer and on the Logout button; the Add Education form saving to the API with the token and logging in again when the token has expired; Android network permissions and `lib/config.dart` for the API address; a GitHub Actions pipeline with very_good_workflows that also builds a release APK; 60 tests in all. The token endpoints and CORS are in my [Django repository](https://github.com/REYHANCSUI25/myportofolio) |
 
 ### Assignment 7
 
