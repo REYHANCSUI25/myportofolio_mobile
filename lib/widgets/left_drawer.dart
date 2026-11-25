@@ -1,9 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/education_form.dart';
+import 'package:myportofolio_mobile/screens/education_list.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/utils/auth_guard.dart';
+import 'package:provider/provider.dart';
 
-enum DrawerPage { home, addEducation, addExperience }
+enum DrawerPage { home, viewEducation, addEducation, addExperience }
 
 class LeftDrawer extends StatelessWidget {
   final DrawerPage? currentPage;
@@ -13,12 +17,17 @@ class LeftDrawer extends StatelessWidget {
 
   Future<void> _open(BuildContext context, DrawerPage page) async {
     final NavigatorState navigator = Navigator.of(context);
+    final AuthState auth = context.read<AuthState>();
     navigator.pop();
     if (page == currentPage) {
       return;
     }
     final Future<bool> Function()? canLeave = confirmLeave;
     if (canLeave != null && !await canLeave()) {
+      return;
+    }
+    final bool needsLogin = page == DrawerPage.addEducation;
+    if (needsLogin && !await loginIfNeeded(navigator, auth)) {
       return;
     }
     if (!navigator.mounted) {
@@ -29,6 +38,11 @@ class LeftDrawer extends StatelessWidget {
         navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MyHomePage()),
           (route) => false,
+        );
+      case DrawerPage.viewEducation:
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const EducationListPage()),
+          (route) => route.isFirst,
         );
       case DrawerPage.addEducation:
         navigator.pushAndRemoveUntil(
@@ -41,6 +55,30 @@ class LeftDrawer extends StatelessWidget {
           (route) => route.isFirst,
         );
     }
+  }
+
+  Future<void> _logIn(BuildContext context) async {
+    final NavigatorState navigator = Navigator.of(context);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final AuthState auth = context.read<AuthState>();
+    navigator.pop();
+    if (await loginIfNeeded(navigator, auth)) {
+      _showMessage(messenger, 'Logged in as ${auth.username}.');
+    }
+  }
+
+  Future<void> _logOut(BuildContext context) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final AuthState auth = context.read<AuthState>();
+    Navigator.pop(context);
+    await auth.logout();
+    _showMessage(messenger, "You've been logged out.");
+  }
+
+  static void _showMessage(ScaffoldMessengerState messenger, String message) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _pageTile(
@@ -60,6 +98,7 @@ class LeftDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final AuthState auth = context.watch<AuthState>();
 
     return Drawer(
       child: ListView(
@@ -92,6 +131,12 @@ class LeftDrawer extends StatelessWidget {
           _pageTile(context, DrawerPage.home, Icons.home_outlined, 'Home'),
           _pageTile(
             context,
+            DrawerPage.viewEducation,
+            Icons.school_outlined,
+            'View Education',
+          ),
+          _pageTile(
+            context,
             DrawerPage.addEducation,
             Icons.add_circle_outline,
             'Add Education',
@@ -102,6 +147,20 @@ class LeftDrawer extends StatelessWidget {
             Icons.work_outline,
             'Add Experience',
           ),
+          const Divider(),
+          if (auth.isLoggedIn)
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              subtitle: Text('Logged in as ${auth.username}'),
+              onTap: () => _logOut(context),
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.login),
+              title: const Text('Login'),
+              onTap: () => _logIn(context),
+            ),
         ],
       ),
     );
