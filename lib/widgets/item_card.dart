@@ -1,5 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/models/item_homepage.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/utils/auth_guard.dart';
+import 'package:provider/provider.dart';
 
 class ItemCard extends StatelessWidget {
   static const BorderRadius _borderRadius = BorderRadius.all(
@@ -10,7 +13,7 @@ class ItemCard extends StatelessWidget {
 
   const ItemCard(this.item, {super.key});
 
-  void _showPressedMessage(BuildContext context) {
+  void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -21,7 +24,7 @@ class ItemCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'You pressed the ${item.name} button!',
+                  message,
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
@@ -35,10 +38,34 @@ class ItemCard extends StatelessWidget {
       );
   }
 
-  void _openDestination(BuildContext context) {
+  Future<void> _handleTap(BuildContext context) async {
+    if (item.logsOut) {
+      await _logOut(context);
+      return;
+    }
+    _showMessage(context, 'You pressed the ${item.name} button!');
     final WidgetBuilder? destination = item.destination;
-    if (destination != null) {
-      Navigator.push(context, MaterialPageRoute(builder: destination));
+    if (destination == null) {
+      return;
+    }
+    if (item.requiresLogin && !await ensureLoggedIn(context)) {
+      return;
+    }
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.push(context, MaterialPageRoute(builder: destination));
+  }
+
+  Future<void> _logOut(BuildContext context) async {
+    final AuthState auth = context.read<AuthState>();
+    if (!auth.isLoggedIn) {
+      _showMessage(context, "You aren't logged in.");
+      return;
+    }
+    await auth.logout();
+    if (context.mounted) {
+      _showMessage(context, "You've been logged out.");
     }
   }
 
@@ -51,10 +78,7 @@ class ItemCard extends StatelessWidget {
         borderRadius: _borderRadius,
         child: InkWell(
           borderRadius: _borderRadius,
-          onTap: () {
-            _showPressedMessage(context);
-            _openDestination(context);
-          },
+          onTap: () => _handleTap(context),
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: LayoutBuilder(

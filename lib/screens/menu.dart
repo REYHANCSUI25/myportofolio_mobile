@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/models/item_homepage.dart';
 import 'package:myportofolio_mobile/screens/education_form.dart';
+import 'package:myportofolio_mobile/screens/education_list.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
 import 'package:myportofolio_mobile/widgets/info_card.dart';
 import 'package:myportofolio_mobile/widgets/item_card.dart';
@@ -21,6 +22,7 @@ class MyHomePage extends StatelessWidget {
       icon: Icons.school,
       color: Colors.blue.shade800,
       tooltip: 'Browse my education history',
+      destination: (context) => const EducationListPage(),
     ),
     ItemHomepage(
       name: 'Add Education',
@@ -28,6 +30,7 @@ class MyHomePage extends StatelessWidget {
       color: Colors.green.shade800,
       tooltip: 'Add a new education entry',
       destination: (context) => const EducationFormPage(),
+      requiresLogin: true,
     ),
     ItemHomepage(
       name: 'Add Experience',
@@ -41,6 +44,7 @@ class MyHomePage extends StatelessWidget {
       icon: Icons.logout,
       color: Colors.red.shade800,
       tooltip: 'Log out of MyPortfolio',
+      logsOut: true,
     ),
   ];
 

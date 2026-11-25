@@ -1,9 +1,15 @@
+import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/models/education.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/utils/auth_guard.dart';
 import 'package:myportofolio_mobile/utils/unsaved_changes_guard.dart';
 import 'package:myportofolio_mobile/utils/validators.dart';
 import 'package:myportofolio_mobile/widgets/date_form_field.dart';
 import 'package:myportofolio_mobile/widgets/form_decoration.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
+import 'package:provider/provider.dart';
 
 class EducationFormPage extends StatefulWidget {
   const EducationFormPage({super.key});
@@ -24,6 +30,7 @@ class _EducationFormPageState extends State<EducationFormPage>
   String _description = '';
   DateTime? _startedAt;
   DateTime? _endedAt;
+  bool _isSubmitting = false;
 
   String? _validateEndDate(DateTime? endedAt) {
     return validateDateOrder(_startDateKey.currentState?.value, endedAt);
@@ -31,27 +38,97 @@ class _EducationFormPageState extends State<EducationFormPage>
 
   Future<void> _save() async {
     final FormState form = _formKey.currentState!;
-    if (!form.validate()) {
+    if (_isSubmitting || !form.validate()) {
       return;
     }
     form.save();
 
+    final NavigatorState navigator = Navigator.of(context);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final ApiClient api = context.read<ApiClient>();
+    final AuthState auth = context.read<AuthState>();
+    final Education entry = Education(
+      institution: _institution,
+      degree: _degree,
+      description: _description,
+      startedAt: _startedAt!,
+      endedAt: _endedAt,
+    );
+
+    setState(() => _isSubmitting = true);
+    Education? saved;
+    try {
+      saved = await _create(entry, navigator, api, auth);
+    } on ApiException catch (error) {
+      _showError(
+        messenger,
+        "Couldn't save (${error.statusCode}): ${error.message}",
+      );
+    } on http.ClientException catch (error) {
+      _showError(messenger, describeError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+    if (saved == null || !mounted) {
+      return;
+    }
+
+    await _showSummary(saved);
+    if (!mounted) {
+      return;
+    }
+    form.reset();
+    markSaved();
+  }
+
+  static Future<Education?> _create(
+    Education entry,
+    NavigatorState navigator,
+    ApiClient api,
+    AuthState auth,
+  ) async {
+    if (!await loginIfNeeded(navigator, auth)) {
+      return null;
+    }
+    try {
+      return await api.createEducation(entry, token: auth.token!);
+    } on ApiException catch (error) {
+      if (error.statusCode != 401) {
+        rethrow;
+      }
+    }
+    await auth.logout();
+    if (!await loginIfNeeded(navigator, auth)) {
+      return null;
+    }
+    return api.createEducation(entry, token: auth.token!);
+  }
+
+  static void _showError(ScaffoldMessengerState messenger, String message) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showSummary(Education saved) {
     final MaterialLocalizations localizations = MaterialLocalizations.of(
       context,
     );
-    final DateTime? endedAt = _endedAt;
+    final DateTime? endedAt = saved.endedAt;
     final String endDate = endedAt == null
         ? 'Present'
         : localizations.formatShortDate(endedAt);
     final List<String> summary = [
-      'Institution: $_institution',
-      'Degree: $_degree',
-      'Description: $_description',
-      'Start date: ${localizations.formatShortDate(_startedAt!)}',
+      'Institution: ${saved.institution}',
+      'Degree: ${saved.degree}',
+      'Description: ${saved.description}',
+      'Start date: ${localizations.formatShortDate(saved.startedAt)}',
       'End date: $endDate',
     ];
 
-    await showDialog<void>(
+    return showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -71,11 +148,6 @@ class _EducationFormPageState extends State<EducationFormPage>
         );
       },
     );
-    if (!mounted) {
-      return;
-    }
-    form.reset();
-    markSaved();
   }
 
   @override
@@ -173,8 +245,16 @@ class _EducationFormPageState extends State<EducationFormPage>
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: FilledButton(
-                        onPressed: _save,
-                        child: const Text('Save'),
+                        onPressed: _isSubmitting ? null : _save,
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Save'),
                       ),
                     ),
                   ),
