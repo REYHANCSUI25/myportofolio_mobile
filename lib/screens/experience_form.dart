@@ -1,10 +1,17 @@
+import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/models/experience.dart';
 import 'package:myportofolio_mobile/models/experience_category.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/utils/auth_guard.dart';
+import 'package:myportofolio_mobile/utils/snack_bars.dart';
 import 'package:myportofolio_mobile/utils/unsaved_changes_guard.dart';
 import 'package:myportofolio_mobile/utils/validators.dart';
 import 'package:myportofolio_mobile/widgets/date_form_field.dart';
 import 'package:myportofolio_mobile/widgets/form_decoration.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
+import 'package:provider/provider.dart';
 
 class ExperienceFormPage extends StatefulWidget {
   const ExperienceFormPage({super.key});
@@ -24,28 +31,73 @@ class _ExperienceFormPageState extends State<ExperienceFormPage>
   String _description = '';
   String _thumbnail = '';
   DateTime? _endedAt;
+  bool _isSubmitting = false;
 
   Future<void> _save() async {
     final FormState form = _formKey.currentState!;
-    if (!form.validate()) {
+    if (_isSubmitting || !form.validate()) {
       return;
     }
     form.save();
 
-    final DateTime? endedAt = _endedAt;
+    final NavigatorState navigator = Navigator.of(context);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final ApiClient api = context.read<ApiClient>();
+    final AuthState auth = context.read<AuthState>();
+    final Experience entry = Experience(
+      title: _title,
+      category: _category,
+      description: _description,
+      thumbnail: _thumbnail.isEmpty ? null : _thumbnail,
+      endedAt: _endedAt,
+    );
+
+    setState(() => _isSubmitting = true);
+    Experience? saved;
+    try {
+      saved = await requestWithLogin(
+        navigator,
+        auth,
+        (token) => api.createExperience(entry, token: token),
+      );
+    } on ApiException catch (error) {
+      showSnackBarMessage(
+        messenger,
+        "Couldn't save (${error.statusCode}): ${error.message}",
+      );
+    } on http.ClientException catch (error) {
+      showSnackBarMessage(messenger, describeError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+    if (saved == null || !mounted) {
+      return;
+    }
+
+    await _showSummary(saved);
+    if (!mounted) {
+      return;
+    }
+    form.reset();
+    markSaved();
+  }
+
+  Future<void> _showSummary(Experience saved) {
+    final DateTime? endedAt = saved.endedAt;
     final String endDate = endedAt == null
         ? 'Ongoing'
         : MaterialLocalizations.of(context).formatShortDate(endedAt);
-    final String thumbnail = _thumbnail.isEmpty ? 'None' : _thumbnail;
     final List<String> summary = [
-      'Title: $_title',
-      'Category: ${_category.label}',
-      'Description: $_description',
-      'Thumbnail: $thumbnail',
+      'Title: ${saved.title}',
+      'Category: ${saved.category.label}',
+      'Description: ${saved.description}',
+      'Thumbnail: ${saved.thumbnail ?? 'None'}',
       'End date: $endDate',
     ];
 
-    await showDialog<void>(
+    return showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -65,11 +117,6 @@ class _ExperienceFormPageState extends State<ExperienceFormPage>
         );
       },
     );
-    if (!mounted) {
-      return;
-    }
-    form.reset();
-    markSaved();
   }
 
   @override
@@ -176,8 +223,16 @@ class _ExperienceFormPageState extends State<ExperienceFormPage>
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: FilledButton(
-                        onPressed: _save,
-                        child: const Text('Save'),
+                        onPressed: _isSubmitting ? null : _save,
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Save'),
                       ),
                     ),
                   ),
