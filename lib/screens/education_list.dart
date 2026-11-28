@@ -1,8 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/models/education.dart';
 import 'package:myportofolio_mobile/screens/education_detail.dart';
+import 'package:myportofolio_mobile/screens/education_form.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/utils/auth_guard.dart';
+import 'package:myportofolio_mobile/widgets/empty_list_message.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
+import 'package:myportofolio_mobile/widgets/load_error_message.dart';
 import 'package:provider/provider.dart';
 
 class EducationListPage extends StatefulWidget {
@@ -32,6 +36,19 @@ class _EducationListPageState extends State<EducationListPage> {
     } catch (_) {}
   }
 
+  Future<void> _add() async {
+    final NavigatorState navigator = Navigator.of(context);
+    if (!await ensureLoggedIn(context)) {
+      return;
+    }
+    await navigator.push(
+      MaterialPageRoute(builder: (context) => const EducationFormPage()),
+    );
+    if (mounted) {
+      await _reload();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
@@ -44,6 +61,12 @@ class _EducationListPageState extends State<EducationListPage> {
         foregroundColor: colorScheme.onPrimary,
       ),
       drawer: const LeftDrawer(currentPage: DrawerPage.viewEducation),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _add,
+        tooltip: 'Add a new education entry',
+        icon: const Icon(Icons.add),
+        label: const Text('Add'),
+      ),
       body: FutureBuilder<List<Education>>(
         future: _entries,
         builder: (context, snapshot) {
@@ -53,14 +76,18 @@ class _EducationListPageState extends State<EducationListPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return _LoadError(error: snapshot.error!, onRetry: _reload);
+            return LoadErrorMessage(
+              title: "Couldn't load the education entries.",
+              error: snapshot.error!,
+              onRetry: _reload,
+            );
           }
 
           final List<Education> entries = snapshot.data ?? const [];
           return RefreshIndicator(
             onRefresh: _reload,
             child: entries.isEmpty
-                ? const _EmptyList()
+                ? const EmptyListMessage('No education entries yet.')
                 : _EntryList(entries: entries),
           );
         },
@@ -88,7 +115,7 @@ class _EntryList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
       itemCount: entries.length,
       itemBuilder: (context, index) => _EducationCard(entry: entries[index]),
     );
@@ -139,57 +166,6 @@ class _EducationCard extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyList extends StatelessWidget {
-  const _EmptyList();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (_, constraints) => SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: const Center(child: Text('No education entries yet.')),
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadError extends StatelessWidget {
-  final Object error;
-  final VoidCallback onRetry;
-
-  const _LoadError({required this.error, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Couldn't load the education entries.",
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(describeError(error), textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
         ),
       ),
     );
