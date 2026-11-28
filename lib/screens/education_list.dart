@@ -24,7 +24,9 @@ class _EducationListPageState extends State<EducationListPage> {
   Future<void> _reload() async {
     final ApiClient api = context.read<ApiClient>();
     final Future<List<Education>> entries = api.getEducationList();
-    setState(() => _entries = entries);
+    setState(() {
+      _entries = entries;
+    });
     try {
       await entries;
     } catch (_) {}
