@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:myportofolio_mobile/utils/api_dates.dart';
 
 part 'education.g.dart';
 
@@ -9,9 +10,9 @@ class Education {
   final String institution;
   final String degree;
   final String description;
-  @JsonKey(fromJson: _dateFromJson, toJson: formatApiDate)
+  @JsonKey(fromJson: parseApiDate, toJson: formatApiDate)
   final DateTime startedAt;
-  @JsonKey(fromJson: _optionalDateFromJson, toJson: _optionalDateToJson)
+  @JsonKey(fromJson: parseOptionalApiDate, toJson: formatOptionalApiDate)
   final DateTime? endedAt;
   @JsonKey(includeToJson: false)
   final int starCount;
@@ -36,18 +37,3 @@ class Education {
 
   Map<String, dynamic> toJson() => _$EducationToJson(this);
 }
-
-String formatApiDate(DateTime date) {
-  final String year = date.year.toString().padLeft(4, '0');
-  final String month = date.month.toString().padLeft(2, '0');
-  final String day = date.day.toString().padLeft(2, '0');
-  return '$year-$month-$day';
-}
-
-DateTime _dateFromJson(String value) => DateTime.parse(value);
-
-DateTime? _optionalDateFromJson(String? value) =>
-    value == null ? null : DateTime.parse(value);
-
-String? _optionalDateToJson(DateTime? date) =>
-    date == null ? null : formatApiDate(date);
