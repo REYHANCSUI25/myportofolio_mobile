@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/models/education.dart';
+import 'package:myportofolio_mobile/widgets/detail_row.dart';
 
 class EducationDetailPage extends StatelessWidget {
   final Education entry;
@@ -41,16 +42,16 @@ class EducationDetailPage extends StatelessWidget {
                     backgroundColor: colorScheme.secondaryContainer,
                   ),
                 const SizedBox(height: 12),
-                _DetailRow(
+                DetailRow(
                   label: 'Start date',
                   value: localizations.formatShortDate(entry.startedAt),
                 ),
                 if (endedAt != null)
-                  _DetailRow(
+                  DetailRow(
                     label: 'End date',
                     value: localizations.formatShortDate(endedAt),
                   ),
-                _DetailRow(label: 'Stars', value: '${entry.starCount}'),
+                DetailRow(label: 'Stars', value: '${entry.starCount}'),
                 const SizedBox(height: 16),
                 Text('Description', style: textTheme.titleSmall),
                 const SizedBox(height: 4),
@@ -59,33 +60,6 @@ class EducationDetailPage extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _DetailRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 96,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/utils/snack_bars.dart';
 import 'package:myportofolio_mobile/utils/validators.dart';
 import 'package:myportofolio_mobile/widgets/form_decoration.dart';
 import 'package:provider/provider.dart';
@@ -50,9 +51,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    showSnackBarMessage(ScaffoldMessenger.of(context), message);
   }
 
   @override
