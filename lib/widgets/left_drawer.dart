@@ -2,12 +2,20 @@ import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/education_form.dart';
 import 'package:myportofolio_mobile/screens/education_list.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/screens/experience_list.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
 import 'package:myportofolio_mobile/utils/auth_guard.dart';
+import 'package:myportofolio_mobile/utils/snack_bars.dart';
 import 'package:provider/provider.dart';
 
-enum DrawerPage { home, viewEducation, addEducation, addExperience }
+enum DrawerPage {
+  home,
+  viewEducation,
+  addEducation,
+  viewExperience,
+  addExperience,
+}
 
 class LeftDrawer extends StatelessWidget {
   final DrawerPage? currentPage;
@@ -26,7 +34,8 @@ class LeftDrawer extends StatelessWidget {
     if (canLeave != null && !await canLeave()) {
       return;
     }
-    final bool needsLogin = page == DrawerPage.addEducation;
+    final bool needsLogin =
+        page == DrawerPage.addEducation || page == DrawerPage.addExperience;
     if (needsLogin && !await loginIfNeeded(navigator, auth)) {
       return;
     }
@@ -49,6 +58,11 @@ class LeftDrawer extends StatelessWidget {
           MaterialPageRoute(builder: (context) => const EducationFormPage()),
           (route) => route.isFirst,
         );
+      case DrawerPage.viewExperience:
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const ExperienceListPage()),
+          (route) => route.isFirst,
+        );
       case DrawerPage.addExperience:
         navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const ExperienceFormPage()),
@@ -63,7 +77,7 @@ class LeftDrawer extends StatelessWidget {
     final AuthState auth = context.read<AuthState>();
     navigator.pop();
     if (await loginIfNeeded(navigator, auth)) {
-      _showMessage(messenger, 'Logged in as ${auth.username}.');
+      showSnackBarMessage(messenger, 'Logged in as ${auth.username}.');
     }
   }
 
@@ -72,13 +86,7 @@ class LeftDrawer extends StatelessWidget {
     final AuthState auth = context.read<AuthState>();
     Navigator.pop(context);
     await auth.logout();
-    _showMessage(messenger, "You've been logged out.");
-  }
-
-  static void _showMessage(ScaffoldMessengerState messenger, String message) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    showSnackBarMessage(messenger, "You've been logged out.");
   }
 
   Widget _pageTile(
@@ -140,6 +148,12 @@ class LeftDrawer extends StatelessWidget {
             DrawerPage.addEducation,
             Icons.add_circle_outline,
             'Add Education',
+          ),
+          _pageTile(
+            context,
+            DrawerPage.viewExperience,
+            Icons.work_history_outlined,
+            'View Experience',
           ),
           _pageTile(
             context,
