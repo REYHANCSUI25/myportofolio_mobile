@@ -1,3 +1,6 @@
+import 'package:json_annotation/json_annotation.dart';
+
+@JsonEnum(valueField: 'value')
 enum ExperienceCategory {
   internship('internship', 'Internship'),
   research('research', 'Research'),

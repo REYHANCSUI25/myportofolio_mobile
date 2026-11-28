@@ -3,6 +3,7 @@ import 'package:myportofolio_mobile/models/item_homepage.dart';
 import 'package:myportofolio_mobile/screens/education_form.dart';
 import 'package:myportofolio_mobile/screens/education_list.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/screens/experience_list.dart';
 import 'package:myportofolio_mobile/widgets/info_card.dart';
 import 'package:myportofolio_mobile/widgets/item_card.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
@@ -33,11 +34,19 @@ class MyHomePage extends StatelessWidget {
       requiresLogin: true,
     ),
     ItemHomepage(
+      name: 'View Experience',
+      icon: Icons.work_history,
+      color: Colors.teal.shade800,
+      tooltip: 'Browse my experience',
+      destination: (context) => const ExperienceListPage(),
+    ),
+    ItemHomepage(
       name: 'Add Experience',
       icon: Icons.work,
       color: Colors.purple.shade800,
       tooltip: 'Add a new experience entry',
       destination: (context) => const ExperienceFormPage(),
+      requiresLogin: true,
     ),
     ItemHomepage(
       name: 'Logout',
@@ -48,7 +57,7 @@ class MyHomePage extends StatelessWidget {
     ),
   ];
 
-  static int _gridColumns(double width) => width >= wideGridWidth ? 4 : 2;
+  static int _gridColumns(double width) => width >= wideGridWidth ? 3 : 2;
 
   @override
   Widget build(BuildContext context) {

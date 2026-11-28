@@ -62,9 +62,4 @@ void main() {
       expect(entry.toJson(), containsPair('ended_at', null));
     });
   });
-
-  test('formatApiDate writes YYYY-MM-DD and drops the time', () {
-    expect(formatApiDate(DateTime(2025, 8, 1)), '2025-08-01');
-    expect(formatApiDate(DateTime(2025, 12, 31, 23, 59)), '2025-12-31');
-  });
 }

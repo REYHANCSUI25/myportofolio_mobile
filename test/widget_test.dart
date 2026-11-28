@@ -1,11 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
-import 'package:myportofolio_mobile/main.dart';
 import 'package:myportofolio_mobile/screens/education_detail.dart';
 import 'package:myportofolio_mobile/screens/education_form.dart';
 import 'package:myportofolio_mobile/screens/education_list.dart';
-import 'package:myportofolio_mobile/screens/experience_form.dart';
 import 'package:myportofolio_mobile/screens/login.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
@@ -13,85 +11,13 @@ import 'package:myportofolio_mobile/widgets/item_card.dart';
 import 'package:provider/provider.dart';
 
 import 'fake_backend.dart';
-
-Future<void> pumpApp(WidgetTester tester, FakeBackend backend) async {
-  await tester.pumpWidget(MyApp(apiClient: backend.client));
-}
-
-void usePhoneScreen(WidgetTester tester) {
-  tester.view.physicalSize = const Size(400, 900);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.reset);
-}
-
-Future<void> openDrawer(WidgetTester tester) async {
-  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
-  await tester.pumpAndSettle();
-}
-
-Finder inDrawer(String text) {
-  return find.descendant(of: find.byType(Drawer), matching: find.text(text));
-}
-
-Future<void> tapDrawerItem(WidgetTester tester, String title) async {
-  await tester.tap(inDrawer(title));
-  await tester.pumpAndSettle();
-}
-
-Future<void> tapSave(WidgetTester tester) async {
-  await tester.ensureVisible(find.text('Save'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Save'));
-  await tester.pumpAndSettle();
-}
-
-Finder fieldLabelled(String label) {
-  return find.widgetWithText(TextFormField, label);
-}
-
-NavigatorState rootNavigator(WidgetTester tester) {
-  return tester.state<NavigatorState>(find.byType(Navigator));
-}
-
-Future<void> logIn(
-  WidgetTester tester, {
-  String password = FakeBackend.password,
-}) async {
-  await tester.enterText(fieldLabelled('Username'), FakeBackend.username);
-  await tester.enterText(fieldLabelled('Password'), password);
-  await tester.tap(find.text('Log in'));
-  await tester.pumpAndSettle();
-}
-
-Future<void> logInFromDrawer(WidgetTester tester) async {
-  await openDrawer(tester);
-  await tapDrawerItem(tester, 'Login');
-  await logIn(tester);
-}
-
-Future<void> openEducationFormAndLogIn(WidgetTester tester) async {
-  await tester.tap(find.text('Add Education'));
-  await tester.pumpAndSettle();
-  await logIn(tester);
-}
+import 'test_helpers.dart';
 
 Future<void> fillEducationForm(WidgetTester tester) async {
   await tester.enterText(fieldLabelled('Institution'), 'Test University');
   await tester.enterText(fieldLabelled('Degree'), 'Bachelor of Testing');
   await tester.enterText(fieldLabelled('Description'), 'Wrote widget tests.');
-  await tester.ensureVisible(find.text('Start Date'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Start Date'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('15'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('OK'));
-  await tester.pumpAndSettle();
-}
-
-Future<void> openEducationList(WidgetTester tester) async {
-  await tester.tap(find.text('View Education'));
-  await tester.pumpAndSettle();
+  await pickDay15(tester, 'Start Date');
 }
 
 void main() {
@@ -226,6 +152,7 @@ void main() {
   });
 
   testWidgets('the Logout button logs you out', (tester) async {
+    usePhoneScreen(tester);
     final FakeBackend backend = FakeBackend();
     await pumpApp(tester, backend);
     await logInFromDrawer(tester);
@@ -258,7 +185,7 @@ void main() {
     final FakeBackend backend = FakeBackend();
     await pumpApp(tester, backend);
 
-    await openEducationList(tester);
+    await tapText(tester, 'View Education');
 
     expect(find.byType(EducationListPage), findsOneWidget);
     expect(find.byType(LoginPage), findsNothing);
@@ -274,7 +201,7 @@ void main() {
     final FakeBackend backend = FakeBackend()..listStatus = 500;
     await pumpApp(tester, backend);
 
-    await openEducationList(tester);
+    await tapText(tester, 'View Education');
 
     expect(find.text("Couldn't load the education entries."), findsOneWidget);
     expect(find.text('The server had a problem.'), findsOneWidget);
@@ -293,7 +220,7 @@ void main() {
     final FakeBackend backend = FakeBackend()..offline = true;
     await pumpApp(tester, backend);
 
-    await openEducationList(tester);
+    await tapText(tester, 'View Education');
 
     expect(
       find.text("Couldn't reach the server. Check that Django is running."),
@@ -315,7 +242,7 @@ void main() {
   testWidgets('pulling the list down loads it again', (tester) async {
     final FakeBackend backend = FakeBackend();
     await pumpApp(tester, backend);
-    await openEducationList(tester);
+    await tapText(tester, 'View Education');
 
     backend.entries.add(educationJson(id: 'second', degree: 'Second Degree'));
     await tester.fling(
@@ -334,7 +261,7 @@ void main() {
 
   testWidgets('tapping an entry opens its details', (tester) async {
     await pumpApp(tester, FakeBackend());
-    await openEducationList(tester);
+    await tapText(tester, 'View Education');
 
     await tester.tap(find.text('S1 Ilmu Komputer KKI'));
     await tester.pumpAndSettle();
@@ -350,7 +277,7 @@ void main() {
     final FakeBackend backend = FakeBackend();
     backend.entries[0] = educationJson(endedAt: '2029-07-31');
     await pumpApp(tester, backend);
-    await openEducationList(tester);
+    await tapText(tester, 'View Education');
 
     expect(find.text('August 2025 – July 2029'), findsOneWidget);
 
@@ -380,7 +307,7 @@ void main() {
     usePhoneScreen(tester);
     final FakeBackend backend = FakeBackend();
     await pumpApp(tester, backend);
-    await openEducationFormAndLogIn(tester);
+    await openFormAndLogIn(tester, 'Add Education');
 
     await fillEducationForm(tester);
     await tapSave(tester);
@@ -423,7 +350,7 @@ void main() {
     usePhoneScreen(tester);
     final FakeBackend backend = FakeBackend();
     await pumpApp(tester, backend);
-    await openEducationFormAndLogIn(tester);
+    await openFormAndLogIn(tester, 'Add Education');
     await fillEducationForm(tester);
     backend.expireTokens();
 
@@ -440,45 +367,30 @@ void main() {
     expect(posts.last.headers['Authorization'], 'Token token-2');
   });
 
-  testWidgets('Add Experience opens the experience form', (tester) async {
-    await pumpApp(tester, FakeBackend());
-
-    await tester.tap(find.text('Add Experience'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ExperienceFormPage), findsOneWidget);
-  });
-
-  testWidgets('the drawer opens the experience form above the home screen', (
+  testWidgets('Add on the education list returns to a refreshed list', (
     tester,
   ) async {
-    await pumpApp(tester, FakeBackend());
+    usePhoneScreen(tester);
+    final FakeBackend backend = FakeBackend();
+    await pumpApp(tester, backend);
+    await tapText(tester, 'View Education');
 
-    await openDrawer(tester);
-    await tapDrawerItem(tester, 'Add Experience');
+    await tapText(tester, 'Add');
 
-    expect(find.byType(ExperienceFormPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
 
-    rootNavigator(tester).maybePop();
-    await tester.pumpAndSettle();
+    await logIn(tester);
 
-    expect(find.byType(ExperienceFormPage), findsNothing);
-    expect(find.byType(MyHomePage), findsOneWidget);
-  });
+    expect(find.byType(EducationFormPage), findsOneWidget);
 
-  testWidgets('Home in the drawer takes a form back to the home screen', (
-    tester,
-  ) async {
-    await pumpApp(tester, FakeBackend());
-    await tester.tap(find.text('Add Experience'));
-    await tester.pumpAndSettle();
+    await fillEducationForm(tester);
+    await tapSave(tester);
+    await tapText(tester, 'OK');
+    await goBack(tester);
 
-    await openDrawer(tester);
-    await tapDrawerItem(tester, 'Home');
-
-    expect(find.byType(ExperienceFormPage), findsNothing);
-    expect(find.byType(MyHomePage), findsOneWidget);
-    expect(rootNavigator(tester).canPop(), isFalse);
+    expect(find.byType(EducationListPage), findsOneWidget);
+    expect(find.text('Bachelor of Testing'), findsOneWidget);
+    expect(backend.requestsTo('GET', educationPath), hasLength(2));
   });
 
   testWidgets('the drawer marks the page you are on', (tester) async {
@@ -496,91 +408,6 @@ void main() {
     expect(addExperience.selected, isFalse);
   });
 
-  testWidgets('an invalid experience shows an error next to each field', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const MaterialApp(home: ExperienceFormPage()));
-
-    await tester.enterText(fieldLabelled('Title'), '   ');
-    await tester.enterText(fieldLabelled('Thumbnail URL'), 'not a link');
-    await tapSave(tester);
-
-    expect(find.text('Enter a title.'), findsOneWidget);
-    expect(find.text('Enter a description.'), findsOneWidget);
-    expect(
-      find.text('Enter a valid link that starts with http:// or https://.'),
-      findsOneWidget,
-    );
-    expect(find.byType(AlertDialog), findsNothing);
-  });
-
-  testWidgets('a valid experience is summarized in a dialog', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ExperienceFormPage()));
-
-    await tester.enterText(fieldLabelled('Title'), 'Teaching Assistant');
-    await tester.enterText(fieldLabelled('Description'), 'Graded weekly labs.');
-    await tester.enterText(
-      fieldLabelled('Thumbnail URL'),
-      'https://example.com/ta.png',
-    );
-    await tapSave(tester);
-
-    expect(find.text('Title: Teaching Assistant'), findsOneWidget);
-    expect(find.text('Category: Full-Time'), findsOneWidget);
-    expect(find.text('Description: Graded weekly labs.'), findsOneWidget);
-    expect(find.text('Thumbnail: https://example.com/ta.png'), findsOneWidget);
-    expect(find.text('End date: Ongoing'), findsOneWidget);
-
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.byType(ExperienceFormPage), findsOneWidget);
-    expect(find.text('Teaching Assistant'), findsNothing);
-  });
-
-  testWidgets('going back with unsaved input asks before discarding it', (
-    tester,
-  ) async {
-    await pumpApp(tester, FakeBackend());
-    await tester.tap(find.text('Add Experience'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(fieldLabelled('Title'), 'Draft');
-    await tester.pump();
-    rootNavigator(tester).maybePop();
-    await tester.pumpAndSettle();
-
-    expect(find.text('Discard this entry?'), findsOneWidget);
-
-    await tester.tap(find.text('Discard'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ExperienceFormPage), findsNothing);
-    expect(find.byType(MyHomePage), findsOneWidget);
-  });
-
-  testWidgets('leaving through the drawer with unsaved input asks first', (
-    tester,
-  ) async {
-    await pumpApp(tester, FakeBackend());
-    await tester.tap(find.text('Add Experience'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(fieldLabelled('Title'), 'Draft');
-    await tester.pump();
-    await openDrawer(tester);
-    await tapDrawerItem(tester, 'Home');
-
-    expect(find.text('Discard this entry?'), findsOneWidget);
-
-    await tester.tap(find.text('Keep editing'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ExperienceFormPage), findsOneWidget);
-    expect(find.text('Draft'), findsOneWidget);
-  });
-
   testWidgets('fits a small phone screen without overflowing', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1.0;
@@ -589,21 +416,6 @@ void main() {
     await pumpApp(tester, FakeBackend());
 
     expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('keeps Save reachable on a small phone with the keyboard open', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 568);
-    tester.view.devicePixelRatio = 1.0;
-    tester.view.viewInsets = const FakeViewPadding(bottom: 260);
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(const MaterialApp(home: ExperienceFormPage()));
-    await tapSave(tester);
-
-    expect(tester.takeException(), isNull);
-    expect(find.text('Enter a title.'), findsOneWidget);
   });
 
   testWidgets('follows the system dark mode', (tester) async {

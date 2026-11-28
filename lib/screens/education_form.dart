@@ -4,6 +4,7 @@ import 'package:myportofolio_mobile/models/education.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
 import 'package:myportofolio_mobile/utils/auth_guard.dart';
+import 'package:myportofolio_mobile/utils/snack_bars.dart';
 import 'package:myportofolio_mobile/utils/unsaved_changes_guard.dart';
 import 'package:myportofolio_mobile/utils/validators.dart';
 import 'package:myportofolio_mobile/widgets/date_form_field.dart';
@@ -58,14 +59,18 @@ class _EducationFormPageState extends State<EducationFormPage>
     setState(() => _isSubmitting = true);
     Education? saved;
     try {
-      saved = await _create(entry, navigator, api, auth);
+      saved = await requestWithLogin(
+        navigator,
+        auth,
+        (token) => api.createEducation(entry, token: token),
+      );
     } on ApiException catch (error) {
-      _showError(
+      showSnackBarMessage(
         messenger,
         "Couldn't save (${error.statusCode}): ${error.message}",
       );
     } on http.ClientException catch (error) {
-      _showError(messenger, describeError(error));
+      showSnackBarMessage(messenger, describeError(error));
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -81,35 +86,6 @@ class _EducationFormPageState extends State<EducationFormPage>
     }
     form.reset();
     markSaved();
-  }
-
-  static Future<Education?> _create(
-    Education entry,
-    NavigatorState navigator,
-    ApiClient api,
-    AuthState auth,
-  ) async {
-    if (!await loginIfNeeded(navigator, auth)) {
-      return null;
-    }
-    try {
-      return await api.createEducation(entry, token: auth.token!);
-    } on ApiException catch (error) {
-      if (error.statusCode != 401) {
-        rethrow;
-      }
-    }
-    await auth.logout();
-    if (!await loginIfNeeded(navigator, auth)) {
-      return null;
-    }
-    return api.createEducation(entry, token: auth.token!);
-  }
-
-  static void _showError(ScaffoldMessengerState messenger, String message) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showSummary(Education saved) {

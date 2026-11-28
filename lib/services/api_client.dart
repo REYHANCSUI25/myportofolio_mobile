@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:myportofolio_mobile/config.dart';
 import 'package:myportofolio_mobile/models/education.dart';
+import 'package:myportofolio_mobile/models/experience.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -19,21 +20,16 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
+  static const String _educationPath = '/api/v1/education/';
+  static const String _experiencePath = '/api/v1/experience/';
+
   final http.Client _client;
   final String baseUrl;
 
   ApiClient(this._client, {this.baseUrl = apiBaseUrl});
 
-  Uri _uri(String path) => Uri.parse('$baseUrl$path');
-
   Future<List<Education>> getEducationList() async {
-    final http.Response response = await _client.get(
-      _uri('/api/v1/education/'),
-      headers: const {'Accept': 'application/json'},
-    );
-    _ensureSuccess(response);
-
-    final List<dynamic> entries = _decode(response) as List<dynamic>;
+    final List<dynamic> entries = await _getList(_educationPath);
     return [
       for (final entry in entries)
         Education.fromJson(entry as Map<String, dynamic>),
@@ -44,27 +40,46 @@ class ApiClient {
     Education education, {
     required String token,
   }) async {
-    final http.Response response = await _client.post(
-      _uri('/api/v1/education/'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Token $token',
-      },
-      body: jsonEncode(education.toJson()),
+    final Map<String, dynamic> saved = await _create(
+      _educationPath,
+      education.toJson(),
+      token,
+    );
+    return Education.fromJson(saved);
+  }
+
+  Future<List<Experience>> getExperienceList() async {
+    final List<dynamic> entries = await _getList(_experiencePath);
+    return [
+      for (final entry in entries)
+        Experience.fromJson(entry as Map<String, dynamic>),
+    ];
+  }
+
+  Future<Experience> createExperience(
+    Experience experience, {
+    required String token,
+  }) async {
+    final Map<String, dynamic> saved = await _create(
+      _experiencePath,
+      experience.toJson(),
+      token,
+    );
+    return Experience.fromJson(saved);
+  }
+
+  Future<void> deleteExperience(String id, {required String token}) async {
+    final http.Response response = await _client.delete(
+      _uri('$_experiencePath$id/'),
+      headers: _headers(token),
     );
     _ensureSuccess(response);
-
-    return Education.fromJson(_decode(response) as Map<String, dynamic>);
   }
 
   Future<String> obtainToken(String username, String password) async {
     final http.Response response = await _client.post(
       _uri('/api/v1/auth/token/'),
-      headers: const {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
+      headers: _jsonHeaders(),
       body: jsonEncode({'username': username, 'password': password}),
     );
     _ensureSuccess(response);
@@ -76,9 +91,48 @@ class ApiClient {
   Future<void> logout({required String token}) async {
     final http.Response response = await _client.post(
       _uri('/api/v1/auth/logout/'),
-      headers: {'Accept': 'application/json', 'Authorization': 'Token $token'},
+      headers: _headers(token),
     );
     _ensureSuccess(response);
+  }
+
+  Uri _uri(String path) => Uri.parse('$baseUrl$path');
+
+  Future<List<dynamic>> _getList(String path) async {
+    final http.Response response = await _client.get(
+      _uri(path),
+      headers: _headers(),
+    );
+    _ensureSuccess(response);
+    return _decode(response) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> _create(
+    String path,
+    Map<String, dynamic> body,
+    String token,
+  ) async {
+    final http.Response response = await _client.post(
+      _uri(path),
+      headers: _jsonHeaders(token),
+      body: jsonEncode(body),
+    );
+    _ensureSuccess(response);
+    return _decode(response) as Map<String, dynamic>;
+  }
+
+  static Map<String, String> _headers([String? token]) {
+    return {
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Token $token',
+    };
+  }
+
+  static Map<String, String> _jsonHeaders([String? token]) {
+    return {
+      ..._headers(token),
+      'Content-Type': 'application/json; charset=UTF-8',
+    };
   }
 
   static Object? _decode(http.Response response) {
